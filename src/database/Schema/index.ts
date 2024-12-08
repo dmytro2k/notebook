@@ -6,6 +6,7 @@ import {
   CreateUserZodSchema,
   DeleteUserZodSchema,
   GetUserZodSchema,
+  GetUserByNameZodSchema,
   AuthZodSchema,
 } from './User/schema';
 import {
@@ -29,6 +30,7 @@ export {
   CreateUserZodSchema,
   DeleteUserZodSchema,
   GetUserZodSchema,
+  GetUserByNameZodSchema,
   AuthZodSchema,
   records,
   recordsRelations,

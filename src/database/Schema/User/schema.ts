@@ -31,4 +31,8 @@ export const GetUserZodSchema = createSelectSchema(users).pick({
   userId: true,
 });
 
+export const GetUserByNameZodSchema = createSelectSchema(users).pick({
+  userName: true,
+});
+
 export const AuthZodSchema = CreateUserZodSchema;

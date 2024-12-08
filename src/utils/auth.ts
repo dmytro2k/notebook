@@ -1,12 +1,7 @@
 import bcrypt from 'bcryptjs';
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import { BadRequestError, UnauthenticatedError } from '../errors';
+import jwt from 'jsonwebtoken';
+import { BadRequestError } from '../errors';
 import config from '../config';
-import { getUserById } from '../services/users';
-
-type VerifyTokenProps = {
-  token: string;
-};
 
 export const hashPassword = async (password: string): Promise<string> => {
   const salt = await bcrypt.genSalt(13);
@@ -26,5 +21,3 @@ export const createJWT = (userId: string): string => {
     expiresIn: config.JWT_LIFETIME,
   });
 };
-
-export const verifyToken = async ({ token }: VerifyTokenProps) => {};
