@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { UserZodSchema } from '../src/interfaces/index';
+import { User } from '../src/database/Schema';
 
-type User = z.infer<typeof UserZodSchema>;
+type User = z.infer<typeof User>;
 
 declare module 'express' {
   export interface Request {

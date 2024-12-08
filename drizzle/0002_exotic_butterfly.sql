@@ -1,0 +1,1 @@
+ALTER TABLE "records" RENAME COLUMN "record_text" TO "record_note";
