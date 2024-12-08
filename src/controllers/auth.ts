@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { z } from 'zod';
 import { AuthZodSchema } from '../database/Schema';
-import { TypedRequest } from '../interfaces';
+import { TypedRequest } from '../types';
 import { userLogin, userRegister } from '../services/auth';
 import { StatusCodes } from 'http-status-codes';
 import { safeAwait } from '../utils/safeAwait';

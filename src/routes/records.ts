@@ -1,8 +1,14 @@
 import express from 'express';
-import { createRecord, deleteRecord, editRecord, getDateRecords } from '../controllers/records';
+import { createRecord, deleteRecord, editRecord, getDateRecords, getFullRecord, getTimeRecords } from '../controllers/records';
 import { validateData } from '../middlewares/validation';
-import { EmptyZodSchema } from '../interfaces';
-import { CreateRecordZodSchema, DeleteRecordZodSchema, EditRecordZodSchema, GetDateRecordsZodSchema } from '../database/Schema';
+import {
+  CreateRecordZodSchema,
+  DeleteRecordZodSchema,
+  EditRecordZodSchema,
+  GetDateRecordsZodSchema,
+  GetFullRecordZodSchema,
+  GetTimeRecordsZodSchema,
+} from '../database/Schema';
 
 const router = express.Router();
 
@@ -11,6 +17,9 @@ router
   .post(validateData(CreateRecordZodSchema), createRecord)
   .delete(validateData(DeleteRecordZodSchema), deleteRecord)
   .patch(validateData(EditRecordZodSchema), editRecord);
-router.route('/:recordDate').get(validateData(EmptyZodSchema, GetDateRecordsZodSchema), getDateRecords);
+
+router.route('/full').post(validateData(GetFullRecordZodSchema), getFullRecord);
+router.route('/dated').post(validateData(GetDateRecordsZodSchema), getDateRecords);
+router.route('/timed').post(validateData(GetTimeRecordsZodSchema), getTimeRecords);
 
 export default router;
