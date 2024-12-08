@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { asyncWrapper } from '../middlewares/asyncWrapper';
 import {
   CreateRecordZodSchema,
   DeleteRecordZodSchema,
@@ -19,14 +18,14 @@ type GetDateRecordsBody = z.infer<typeof GetDateRecordsZodSchema>;
 type GetTimeRecordsZodSchemaBody = z.infer<typeof GetTimeRecordsZodSchema>;
 type GetFullRecordZodSchemaBody = z.infer<typeof GetFullRecordZodSchema>;
 
-export const createRecord = asyncWrapper(async (req: TypedRequest<CreateRecordBody, {}, {}>, res: Response) => {});
+export const createRecord = async (req: TypedRequest<CreateRecordBody, {}, {}>, res: Response) => {};
 
-export const deleteRecord = asyncWrapper(async (req: TypedRequest<DeleteRecordBody, {}, {}>, res: Response) => {});
+export const deleteRecord = async (req: TypedRequest<DeleteRecordBody, {}, {}>, res: Response) => {};
 
-export const editRecord = asyncWrapper(async (req: TypedRequest<EditRecordBody, {}, {}>, res: Response) => {});
+export const editRecord = async (req: TypedRequest<EditRecordBody, {}, {}>, res: Response) => {};
 
-export const getDateRecords = asyncWrapper(async (req: TypedRequest<GetDateRecordsBody, {}, {}>, res: Response) => {});
+export const getDateRecords = async (req: TypedRequest<GetDateRecordsBody, {}, {}>, res: Response) => {};
 
-export const getTimeRecords = asyncWrapper(async (req: TypedRequest<GetTimeRecordsZodSchemaBody, {}, {}>, res: Response) => {});
+export const getTimeRecords = async (req: TypedRequest<GetTimeRecordsZodSchemaBody, {}, {}>, res: Response) => {};
 
-export const getFullRecord = asyncWrapper(async (req: TypedRequest<GetFullRecordZodSchemaBody, {}, {}>, res: Response) => {});
+export const getFullRecord = async (req: TypedRequest<GetFullRecordZodSchemaBody, {}, {}>, res: Response) => {};

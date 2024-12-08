@@ -1,25 +1,14 @@
+import { z } from 'zod';
 import { DrizzleProvider } from '../database/dbProvider';
-import { users } from '../database/Schema';
+import { CreateUserZodSchema, DeleteUserZodSchema, GetUserByNameZodSchema, GetUserZodSchema, users } from '../database/Schema';
 import { BadRequestError, NotFoundError } from '../errors';
-import { createJWT, hashPassword } from '../utils/auth';
+import { hashPassword } from '../utils/auth';
 import { eq } from 'drizzle-orm';
 
-type GetUserByNameProps = {
-  userName: string;
-};
-
-type GetUserByIdProps = {
-  userId: string;
-};
-
-type DeleteUserByIdProps = {
-  userId: string;
-};
-
-type CreateUserProps = {
-  userName: string;
-  userPassword: string;
-};
+type GetUserByNameProps = z.infer<typeof GetUserByNameZodSchema>;
+type GetUserByIdProps = z.infer<typeof GetUserZodSchema>;
+type DeleteUserByIdProps = z.infer<typeof DeleteUserZodSchema>;
+type CreateUserProps = z.infer<typeof CreateUserZodSchema>;
 
 export const getUserByName = async ({ userName }: GetUserByNameProps) => {
   const [user] = await DrizzleProvider.getInstance().select().from(users).where(eq(users.userName, userName));
