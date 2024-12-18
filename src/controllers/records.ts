@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import {
   CreateRecordZodSchema,
@@ -7,12 +7,22 @@ import {
   GetDateRecordsZodSchema,
   GetTimeRecordsZodSchema,
   GetFullRecordZodSchema,
+  GetRecordedDatesZodSchema,
 } from '../database/Schema';
 import { TypedRequest } from '../types';
 import { z } from 'zod';
 import { safeAwait } from '../utils/safeAwait';
-import { createNewRecord, deleteRecordById, updateRecord, getRecordsByDate, getRecordsByTime, getRecordById } from '../services/records';
+import {
+  createNewRecord,
+  deleteRecordById,
+  updateRecord,
+  getRecordsByDate,
+  getRecordsByTime,
+  getRecordById,
+  getRecordedDatesByUser,
+} from '../services/records';
 import { UnauthenticatedError } from '../errors';
+import { getRecordedDatesWithTodos } from '../services/todos';
 
 type CreateRecordBody = z.infer<typeof CreateRecordZodSchema>;
 type DeleteRecordBody = z.infer<typeof DeleteRecordZodSchema>;
@@ -20,6 +30,7 @@ type EditRecordBody = z.infer<typeof EditRecordZodSchema>;
 type GetDateRecordsBody = z.infer<typeof GetDateRecordsZodSchema>;
 type GetTimeRecordsBody = z.infer<typeof GetTimeRecordsZodSchema>;
 type GetFullRecordBody = z.infer<typeof GetFullRecordZodSchema>;
+type GetRecordedDatesBody = z.infer<typeof GetRecordedDatesZodSchema>;
 
 export const createRecord = async (req: TypedRequest<CreateRecordBody, {}, {}>, res: Response, next: NextFunction) => {
   const { user } = req;
@@ -73,7 +84,7 @@ export const editRecord = async (req: TypedRequest<EditRecordBody, {}, {}>, res:
 
 export const getDateRecords = async (req: TypedRequest<GetDateRecordsBody, {}, {}>, res: Response, next: NextFunction) => {
   const { user } = req;
-  const { recordDate, userId } = req.body;
+  const { userId, recordDate } = req.body;
 
   if (!user || user.userId !== userId) {
     return next(new UnauthenticatedError('Unauthorized'));
@@ -107,17 +118,41 @@ export const getTimeRecords = async (req: TypedRequest<GetTimeRecordsBody, {}, {
 
 export const getFullRecord = async (req: TypedRequest<GetFullRecordBody, {}, {}>, res: Response, next: NextFunction) => {
   const { user } = req;
-  const { recordId, userId } = req.body;
+  const { userId, recordId } = req.body;
 
   if (!user || user.userId !== userId) {
     return next(new UnauthenticatedError('Unauthorized'));
   }
 
-  const [error, data] = await safeAwait(getRecordById({ recordId, userId }));
+  const [error, data] = await safeAwait(getRecordById({ userId, recordId }));
 
   if (error) {
     return next(error);
   }
+
+  res.status(StatusCodes.OK).json(data);
+};
+
+export const getRecordedDates = async (req: TypedRequest<GetRecordedDatesBody, {}, {}>, res: Response, next: NextFunction) => {
+  const { user } = req;
+  const { userId } = req.body;
+
+  if (!user || user.userId !== userId) {
+    return next(new UnauthenticatedError('Unauthorized'));
+  }
+
+  const [recordError, recordData] = await safeAwait(getRecordedDatesByUser({ userId }));
+  const [todoError, todoData] = await safeAwait(getRecordedDatesWithTodos({ userId }));
+
+  if (recordError) {
+    return next(recordError);
+  }
+
+  if (todoError) {
+    return next(todoError);
+  }
+
+  const data = [...new Set([...recordData, ...todoData])];
 
   res.status(StatusCodes.OK).json(data);
 };

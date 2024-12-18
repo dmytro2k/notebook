@@ -1,5 +1,13 @@
 import express from 'express';
-import { createRecord, deleteRecord, editRecord, getDateRecords, getFullRecord, getTimeRecords } from '../controllers/records';
+import {
+  createRecord,
+  deleteRecord,
+  editRecord,
+  getDateRecords,
+  getFullRecord,
+  getRecordedDates,
+  getTimeRecords,
+} from '../controllers/records';
 import { validateData } from '../middlewares/validation';
 import {
   CreateRecordZodSchema,
@@ -7,6 +15,7 @@ import {
   EditRecordZodSchema,
   GetDateRecordsZodSchema,
   GetFullRecordZodSchema,
+  GetRecordedDatesZodSchema,
   GetTimeRecordsZodSchema,
 } from '../database/Schema';
 
@@ -21,5 +30,6 @@ router
 router.route('/full').post(validateData(GetFullRecordZodSchema), getFullRecord);
 router.route('/dated').post(validateData(GetDateRecordsZodSchema), getDateRecords);
 router.route('/timed').post(validateData(GetTimeRecordsZodSchema), getTimeRecords);
+router.route('/dates').post(validateData(GetRecordedDatesZodSchema), getRecordedDates);
 
 export default router;

@@ -20,7 +20,20 @@ import {
   GetDateRecordsZodSchema,
   GetTimeRecordsZodSchema,
   GetFullRecordZodSchema,
+  GetRecordedDatesZodSchema,
 } from './Record/schema';
+import {
+  todos,
+  todosRelations,
+  Todo,
+  NewTodo,
+  CreateTodoZodSchema,
+  DeleteTodoZodSchema,
+  EditTodoZodSchema,
+  GetDateTodosZodSchema,
+  GetFullTodoZodSchema,
+  GetRecordedDatesWithTodosZodSchema,
+} from './Todo/schema';
 
 export {
   users,
@@ -42,4 +55,15 @@ export {
   GetDateRecordsZodSchema,
   GetTimeRecordsZodSchema,
   GetFullRecordZodSchema,
+  GetRecordedDatesZodSchema,
+  todos,
+  todosRelations,
+  Todo,
+  NewTodo,
+  CreateTodoZodSchema,
+  DeleteTodoZodSchema,
+  EditTodoZodSchema,
+  GetDateTodosZodSchema,
+  GetFullTodoZodSchema,
+  GetRecordedDatesWithTodosZodSchema,
 };

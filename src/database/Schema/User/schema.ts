@@ -16,10 +16,12 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
-export const CreateUserZodSchema = createInsertSchema(users).pick({
-  userName: true,
-  userPassword: true,
-});
+export const CreateUserZodSchema = createInsertSchema(users)
+  .pick({
+    userName: true,
+    userPassword: true,
+  })
+  .required();
 
 export const DeleteUserZodSchema = createInsertSchema(users)
   .pick({
@@ -27,12 +29,16 @@ export const DeleteUserZodSchema = createInsertSchema(users)
   })
   .required();
 
-export const GetUserZodSchema = createSelectSchema(users).pick({
-  userId: true,
-});
+export const GetUserZodSchema = createInsertSchema(users)
+  .pick({
+    userId: true,
+  })
+  .required();
 
-export const GetUserByNameZodSchema = createSelectSchema(users).pick({
-  userName: true,
-});
+export const GetUserByNameZodSchema = createInsertSchema(users)
+  .pick({
+    userName: true,
+  })
+  .required();
 
 export const AuthZodSchema = CreateUserZodSchema;

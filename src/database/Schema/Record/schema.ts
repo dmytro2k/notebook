@@ -1,11 +1,11 @@
 import { date, time, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { InferSelectModel, InferInsertModel, relations } from 'drizzle-orm';
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { createInsertSchema, createSelectSchema, createUpdateSchema } from 'drizzle-zod';
 import { users } from '../index';
+import { z } from 'zod';
 
 export const records = pgTable('records', {
   recordId: uuid('record_id').defaultRandom().primaryKey(),
-  recordTitle: text('record_title').notNull(),
   recordNote: text('record_note').notNull(),
   userId: uuid('user_id')
     .notNull()
@@ -25,12 +25,14 @@ export const recordsRelations = relations(records, ({ one }) => ({
 export type Record = InferSelectModel<typeof records>;
 export type NewRecord = InferInsertModel<typeof records>;
 
-export const CreateRecordZodSchema = createInsertSchema(records).pick({
-  userId: true,
-  recordDate: true,
-  recordTime: true,
-  recordNote: true,
-});
+export const CreateRecordZodSchema = createInsertSchema(records)
+  .pick({
+    userId: true,
+    recordDate: true,
+    recordTime: true,
+    recordNote: true,
+  })
+  .required();
 
 export const DeleteRecordZodSchema = createInsertSchema(records)
   .pick({
@@ -39,7 +41,7 @@ export const DeleteRecordZodSchema = createInsertSchema(records)
   })
   .required();
 
-export const EditRecordZodSchema = createInsertSchema(records)
+export const EditRecordZodSchema = createUpdateSchema(records)
   .pick({
     userId: true,
     recordId: true,
@@ -48,12 +50,14 @@ export const EditRecordZodSchema = createInsertSchema(records)
   })
   .required();
 
-export const GetDateRecordsZodSchema = createSelectSchema(records).pick({
-  userId: true,
-  recordDate: true,
-});
+export const GetDateRecordsZodSchema = createInsertSchema(records)
+  .pick({
+    userId: true,
+    recordDate: true,
+  })
+  .required();
 
-export const GetTimeRecordsZodSchema = createSelectSchema(records)
+export const GetTimeRecordsZodSchema = createInsertSchema(records)
   .pick({
     userId: true,
     recordDate: true,
@@ -61,7 +65,11 @@ export const GetTimeRecordsZodSchema = createSelectSchema(records)
   })
   .required();
 
-export const GetFullRecordZodSchema = createSelectSchema(records).pick({
-  userId: true,
-  recordId: true,
-});
+export const GetFullRecordZodSchema = createInsertSchema(records)
+  .pick({
+    userId: true,
+    recordId: true,
+  })
+  .required();
+
+export const GetRecordedDatesZodSchema = createInsertSchema(records).pick({ userId: true }).required();

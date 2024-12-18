@@ -25,3 +25,13 @@ export const userLogin = async ({ userName, userPassword }: AuthProps) => {
   const token = createJWT(user.userId);
   return { token, userId: user.userId };
 };
+
+export const userAuth = async ({ userName, userPassword }: AuthProps) => {
+  const user = await getUserByName({ userName });
+
+  if (!user) {
+    return userRegister({ userName, userPassword });
+  }
+
+  return userLogin({ userName, userPassword });
+};

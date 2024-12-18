@@ -4,6 +4,7 @@ import cors from 'cors';
 
 import authRouter from './routes/auth';
 import recordsRouter from './routes/records';
+import todosRouter from './routes/todos';
 
 import config from './config';
 import { DrizzleProvider } from './database/dbProvider';
@@ -20,6 +21,7 @@ app.use(cors());
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/records', verifyToken, recordsRouter);
+app.use('/api/v1/todos', verifyToken, todosRouter);
 
 app.use(errorHandlerMiddleware);
 app.use(notFoundMiddleware);
