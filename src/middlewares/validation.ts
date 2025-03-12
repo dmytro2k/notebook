@@ -13,7 +13,7 @@ export const validateData = (bodyZodSchema: AnyZodObject, paramsZodSchema: AnyZo
       if (error instanceof ZodError) {
         console.log(error.message);
 
-        throw new BadRequestError('Invalid data');
+        throw new BadRequestError(error.message || 'Invalid data');
       } else {
         throw new InternalServerError('Internal Server Error');
       }

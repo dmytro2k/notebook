@@ -1,10 +1,7 @@
-import { z } from 'zod';
-import { AuthZodSchema } from '../database/Schema';
+import { AuthBodySchema as AuthProps } from '../types';
 import { createUser, getUserByName } from './users';
 import { NotFoundError } from '../errors';
 import { comparePasswords, createJWT } from '../utils/auth';
-
-type AuthProps = z.infer<typeof AuthZodSchema>;
 
 export const userRegister = async ({ userName, userPassword }: AuthProps) => {
   const user = await createUser({ userName, userPassword });

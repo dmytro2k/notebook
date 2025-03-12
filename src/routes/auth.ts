@@ -1,6 +1,6 @@
 import express from 'express';
 import { login, register, simplifiedAuth } from '../controllers/auth';
-import { AuthZodSchema } from '../database/Schema';
+import { AuthZodSchema } from '../types';
 import { validateData } from '../middlewares/validation';
 
 const router = express.Router();

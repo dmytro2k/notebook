@@ -1,14 +1,10 @@
 import { NextFunction, Response } from 'express';
-import { z } from 'zod';
-import { AuthZodSchema } from '../database/Schema';
-import { TypedRequest } from '../types';
+import { AuthBodySchema, TypedRequest } from '../types';
 import { userAuth, userLogin, userRegister } from '../services/auth';
 import { StatusCodes } from 'http-status-codes';
 import { safeAwait } from '../utils/safeAwait';
 
-type AuthBody = z.infer<typeof AuthZodSchema>;
-
-export const register = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, next: NextFunction) => {
+export const register = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
   const { userName, userPassword } = req.body;
   const [error, data] = await safeAwait(userRegister({ userName, userPassword }));
 
@@ -19,7 +15,7 @@ export const register = async (req: TypedRequest<AuthBody, {}, {}>, res: Respons
   res.status(StatusCodes.CREATED).json(data);
 };
 
-export const login = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, next: NextFunction) => {
+export const login = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
   const { userName, userPassword } = req.body;
   const [error, data] = await safeAwait(userLogin({ userName, userPassword }));
 
@@ -30,7 +26,7 @@ export const login = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, 
   res.status(StatusCodes.OK).json(data);
 };
 
-export const simplifiedAuth = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, next: NextFunction) => {
+export const simplifiedAuth = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
   const { userName, userPassword } = req.body;
   const [error, data] = await safeAwait(userAuth({ userName, userPassword }));
 
