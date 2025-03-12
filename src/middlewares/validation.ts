@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError, AnyZodObject } from 'zod';
 import { BadRequestError, InternalServerError } from '../errors';
-import { EmptyZodSchema } from '../interfaces';
+import { EmptyZodSchema } from '../types';
 
 export const validateData = (bodyZodSchema: AnyZodObject, paramsZodSchema: AnyZodObject = EmptyZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -13,7 +13,7 @@ export const validateData = (bodyZodSchema: AnyZodObject, paramsZodSchema: AnyZo
       if (error instanceof ZodError) {
         console.log(error.message);
 
-        throw new BadRequestError('Invalid data');
+        throw new BadRequestError(error.message || 'Invalid data');
       } else {
         throw new InternalServerError('Internal Server Error');
       }

@@ -1,25 +1,9 @@
 import { DrizzleProvider } from '../database/dbProvider';
 import { users } from '../database/Schema';
 import { BadRequestError, NotFoundError } from '../errors';
-import { createJWT, hashPassword } from '../utils/auth';
+import { hashPassword } from '../utils/auth';
 import { eq } from 'drizzle-orm';
-
-type GetUserByNameProps = {
-  userName: string;
-};
-
-type GetUserByIdProps = {
-  userId: string;
-};
-
-type DeleteUserByIdProps = {
-  userId: string;
-};
-
-type CreateUserProps = {
-  userName: string;
-  userPassword: string;
-};
+import { CreateUserProps, DeleteUserByIdProps, GetUserByIdProps, GetUserByNameProps } from '../types';
 
 export const getUserByName = async ({ userName }: GetUserByNameProps) => {
   const [user] = await DrizzleProvider.getInstance().select().from(users).where(eq(users.userName, userName));
@@ -27,11 +11,19 @@ export const getUserByName = async ({ userName }: GetUserByNameProps) => {
 };
 
 export const getUserById = async ({ userId }: GetUserByIdProps) => {
+  if (!userId) {
+    throw new BadRequestError('There is no user with such id');
+  }
+
   const [user] = await DrizzleProvider.getInstance().select().from(users).where(eq(users.userId, userId));
   return user;
 };
 
 export const deleteUserById = async ({ userId }: DeleteUserByIdProps) => {
+  if (!userId) {
+    throw new BadRequestError('There is no user with such id');
+  }
+
   const [user] = await DrizzleProvider.getInstance().select().from(users).where(eq(users.userId, userId));
   if (!user) {
     throw new NotFoundError('Not found such user');

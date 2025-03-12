@@ -1,18 +1,21 @@
-import { date, time, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { date, integer, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
 import { InferSelectModel, InferInsertModel, relations } from 'drizzle-orm';
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { users } from '../index';
 
-export const records = pgTable('records', {
-  recordId: uuid('record_id').defaultRandom().primaryKey(),
-  recordText: text('record_text').notNull(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
-  recordDate: date().notNull(),
-  recordTime: time({ precision: 4 }),
-  createdAt: timestamp('created_at', { precision: 0, withTimezone: false }).notNull().defaultNow(),
-});
+export const records = pgTable(
+  'records',
+  {
+    recordId: uuid('record_id').defaultRandom().primaryKey(),
+    recordNote: text('record_note').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    recordDate: date('record_date').notNull(),
+    recordPosition: integer('record_position').notNull(),
+  },
+  (table) => [unique().on(table.userId, table.recordDate, table.recordPosition)]
+);
 
 export const recordsRelations = relations(records, ({ one }) => ({
   author: one(users, {
@@ -24,39 +27,9 @@ export const recordsRelations = relations(records, ({ one }) => ({
 export type Record = InferSelectModel<typeof records>;
 export type NewRecord = InferInsertModel<typeof records>;
 
-export const CreateRecordZodSchema = createInsertSchema(records)
-  .pick({
-    recordDate: true,
-    recordTime: true,
-    recordText: true,
-  })
-  .required();
-
-export const DeleteRecordZodSchema = createInsertSchema(records)
-  .pick({
-    recordId: true,
-  })
-  .required();
-
-export const EditRecordZodSchema = createInsertSchema(records)
-  .pick({
-    recordId: true,
-    recordTime: true,
-    recordText: true,
-  })
-  .required();
-
-export const GetDateRecordsZodSchema = createSelectSchema(records).pick({
-  recordDate: true,
+export const recordInsertZodSchema = createInsertSchema(records, {
+  recordNote: (records) => records.max(1024, 'this note is too long'),
 });
-
-export const GetTimeRecordsZodSchema = createSelectSchema(records)
-  .pick({
-    recordDate: true,
-    recordTime: true,
-  })
-  .required();
-
-export const GetFullRecordZodSchema = createSelectSchema(records).pick({
-  recordId: true,
+export const recordUpdateZodSchema = createUpdateSchema(records, {
+  recordNote: (records) => records.max(1024, 'this note is too long'),
 });

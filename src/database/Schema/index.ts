@@ -1,43 +1,24 @@
-import {
-  users,
-  usersRelations,
-  User,
-  NewUser,
-  CreateUserZodSchema,
-  DeleteUserZodSchema,
-  GetUserZodSchema,
-  AuthZodSchema,
-} from './User/schema';
-import {
-  records,
-  recordsRelations,
-  Record,
-  NewRecord,
-  CreateRecordZodSchema,
-  DeleteRecordZodSchema,
-  EditRecordZodSchema,
-  GetDateRecordsZodSchema,
-  GetTimeRecordsZodSchema,
-  GetFullRecordZodSchema,
-} from './Record/schema';
+import { users, usersRelations, User, NewUser, userInsertZodSchema, userUpdateZodSchema } from './User/schema';
+import { records, recordsRelations, Record, NewRecord, recordInsertZodSchema, recordUpdateZodSchema } from './Record/schema';
+import { todos, todosRelations, Todo, NewTodo, todoInsertZodSchema, todoUpdateZodSchema } from './Todo/schema';
 
 export {
   users,
   usersRelations,
   User,
   NewUser,
-  CreateUserZodSchema,
-  DeleteUserZodSchema,
-  GetUserZodSchema,
-  AuthZodSchema,
+  userInsertZodSchema,
+  userUpdateZodSchema,
   records,
   recordsRelations,
   Record,
   NewRecord,
-  CreateRecordZodSchema,
-  DeleteRecordZodSchema,
-  EditRecordZodSchema,
-  GetDateRecordsZodSchema,
-  GetTimeRecordsZodSchema,
-  GetFullRecordZodSchema,
+  recordInsertZodSchema,
+  recordUpdateZodSchema,
+  todos,
+  todosRelations,
+  Todo,
+  NewTodo,
+  todoInsertZodSchema,
+  todoUpdateZodSchema,
 };

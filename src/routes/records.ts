@@ -1,8 +1,23 @@
 import express from 'express';
-import { createRecord, deleteRecord, editRecord, getDateRecords } from '../controllers/records';
+import {
+  changeRecordPosition,
+  createRecord,
+  deleteRecord,
+  editRecord,
+  getDateRecords,
+  getFullRecord,
+  getRecordedDates,
+} from '../controllers/records';
 import { validateData } from '../middlewares/validation';
-import { EmptyZodSchema } from '../interfaces';
-import { CreateRecordZodSchema, DeleteRecordZodSchema, EditRecordZodSchema, GetDateRecordsZodSchema } from '../database/Schema';
+import {
+  ChangeRecordPositionZodSchema,
+  CreateRecordZodSchema,
+  DeleteRecordZodSchema,
+  EditRecordZodSchema,
+  GetDateRecordsZodSchema,
+  GetFullRecordZodSchema,
+  GetRecordedDatesZodSchema,
+} from '../types';
 
 const router = express.Router();
 
@@ -11,6 +26,10 @@ router
   .post(validateData(CreateRecordZodSchema), createRecord)
   .delete(validateData(DeleteRecordZodSchema), deleteRecord)
   .patch(validateData(EditRecordZodSchema), editRecord);
-router.route('/:recordDate').get(validateData(EmptyZodSchema, GetDateRecordsZodSchema), getDateRecords);
+
+router.route('/move').post(validateData(ChangeRecordPositionZodSchema), changeRecordPosition);
+router.route('/full').post(validateData(GetFullRecordZodSchema), getFullRecord);
+router.route('/date').post(validateData(GetDateRecordsZodSchema), getDateRecords);
+router.route('/dates').post(validateData(GetRecordedDatesZodSchema), getRecordedDates);
 
 export default router;
