@@ -1,154 +1,143 @@
-import { recordInsertZodSchema, records } from '../database/Schema';
-import {
-  CreateRecordBody as CreateNewRecordProps,
-  DeleteRecordBody as DeleteRecordByIdProps,
-  EditRecordBody as UpdateRecordProps,
-  GetDateRecordsBody as GetRecordsByDateProps,
-  GetFullRecordBody as GetRecordByIdProps,
-  GetRecordedDatesBody as GetRecordedDatesByUserProps,
-  ChangeRecordPositionBody as ChangeRecordPositionByIdProps,
-} from '../types';
+import { records } from '../database/Schema';
+import { RecordUpdates } from '../types/records';
 import { DrizzleProvider } from '../database/dbProvider';
-import { and, eq, gt, gte, lt, lte, sql } from 'drizzle-orm';
-import { BadRequestError, UnauthenticatedError } from '../errors';
-import { z } from 'zod';
+import { and, eq, gt, gte, lt, lte, SQL, sql } from 'drizzle-orm';
 
-const GetRecordsLengthPropsZodSchema = recordInsertZodSchema.pick({ userId: true, recordDate: true });
-type GetRecordsLengthProps = z.infer<typeof GetRecordsLengthPropsZodSchema>;
-
-export const createNewRecord = async ({ recordDate, userId, recordNote }: CreateNewRecordProps) => {
-  const recordsLength = await getRecordsLength({ userId, recordDate });
-  const recordPosition = recordsLength + 1;
-
-  const [record] = await DrizzleProvider.getInstance()
-    .insert(records)
-    .values({ userId, recordNote, recordDate, recordPosition })
-    .returning();
-  return record;
+type CreateNewRecordProps = {
+  userId: string;
+  recordDate: string;
+  recordNote: string;
+  recordPosition?: number;
 };
 
-export const deleteRecordById = async ({ recordId, userId }: DeleteRecordByIdProps) => {
-  if (!recordId) {
-    throw new BadRequestError('There is no record with such id');
-  }
-
-  const [record] = await DrizzleProvider.getInstance().select().from(records).where(eq(records.recordId, recordId));
-
-  if (!record) {
-    throw new BadRequestError('There is no such record');
-  }
-
-  if (record.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
-
-  await DrizzleProvider.getInstance().delete(records).where(eq(records.recordId, recordId));
-  await DrizzleProvider.getInstance()
-    .update(records)
-    .set({ recordPosition: sql<number>`recordPosition - 1` })
-    .where(
-      and(and(eq(records.userId, userId), eq(records.recordDate, record.recordDate)), gt(records.recordPosition, records.recordPosition))
-    );
+type DeleteRecordByIdProps = {
+  userId: string;
+  recordId: string;
+  recordDate: string;
+  recordPosition: number;
 };
 
-export const updateRecord = async ({ recordId, userId, recordNote }: UpdateRecordProps) => {
-  const [record] = await DrizzleProvider.getInstance().select().from(records).where(eq(records.recordId, recordId));
-
-  if (!record) {
-    throw new BadRequestError('There is no such record');
-  }
-
-  if (record.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
-
-  const [updatedRecord] = await DrizzleProvider.getInstance()
-    .update(records)
-    .set({ recordNote })
-    .where(eq(records.recordId, recordId))
-    .returning();
-
-  return updatedRecord;
+type UpdateRecordProps = {
+  recordId: string;
+  recordNote: string;
 };
 
-export const changeRecordPositionById = async ({ userId, recordId, recordPosition: newRecordPosition }: ChangeRecordPositionByIdProps) => {
-  const [record] = await DrizzleProvider.getInstance().select().from(records).where(eq(records.recordId, recordId));
+type ChangeRecordPositionProps = {
+  userId: string;
+  recordId: string;
+  recordDate: string;
+  oldRecordPosition: number;
+  newRecordPosition: number;
+};
 
-  if (!record) {
-    throw new BadRequestError('There is no such record');
+type GetRecordsFromDbProps = {
+  userId: string;
+  recordDate: string;
+};
+
+type GetRecordFromDbProps = {
+  recordId: string;
+};
+
+type GetRecordedDatesFromDbProps = {
+  userId: string;
+};
+
+type CountRecordsProps = GetRecordsFromDbProps;
+
+type ShiftRecordsPositionInDbProps = {
+  filter: SQL | undefined;
+  shift: number;
+};
+
+type InsertNewRecordInDbProps = {
+  userId: string;
+  recordDate: string;
+  recordNote: string;
+  recordPosition: number;
+};
+
+type UpdateRecordInDbProps = {
+  recordId: string;
+  recordUpdates: RecordUpdates;
+};
+
+type DeleteRecordFromDbProps = {
+  recordId: string;
+};
+
+export const createNewRecord = async ({ userId, recordDate, recordNote, recordPosition }: CreateNewRecordProps) => {
+  const recordsLength = await countRecords({ userId, recordDate });
+
+  if ((!recordPosition && recordPosition != 0) || recordPosition > recordsLength) {
+    recordPosition = recordsLength;
   }
 
-  if (record.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
+  await shiftRecordsPositionInDb({
+    filter: and(and(eq(records.userId, userId), eq(records.recordDate, recordDate)), gte(records.recordPosition, recordPosition)),
+    shift: 1,
+  });
 
-  const oldRecordPosition = record.recordPosition;
+  return insertNewRecordInDb({ userId, recordDate, recordNote, recordPosition });
+};
 
-  await DrizzleProvider.getInstance()
-    .update(records)
-    .set({ recordPosition: sql<number>`-1` })
-    .where(eq(records.recordId, recordId));
+export const deleteRecordById = async ({ userId, recordId, recordDate, recordPosition }: DeleteRecordByIdProps) => {
+  await deleteRecordFromDb({ recordId });
+  await shiftRecordsPositionInDb({
+    filter: and(and(eq(records.userId, userId), eq(records.recordDate, recordDate)), gt(records.recordPosition, recordPosition)),
+    shift: -1,
+  });
+};
 
+export const updateRecord = async ({ recordId, recordNote }: UpdateRecordProps) => {
+  return updateRecordInDb({ recordId, recordUpdates: { recordNote } });
+};
+
+export const changeRecordPosition = async ({
+  userId,
+  recordId,
+  recordDate,
+  oldRecordPosition,
+  newRecordPosition,
+}: ChangeRecordPositionProps) => {
   if (oldRecordPosition < newRecordPosition) {
-    await DrizzleProvider.getInstance()
-      .update(records)
-      .set({ recordPosition: sql<number>`recordPosition + 1` })
-      .where(
-        and(
-          and(eq(records.userId, userId), eq(records.recordDate, record.recordDate)),
-          and(gte(records.recordPosition, newRecordPosition), lt(records.recordPosition, oldRecordPosition))
-        )
-      );
+    await shiftRecordsPositionInDb({
+      filter: and(
+        and(eq(records.userId, userId), eq(records.recordDate, recordDate)),
+        and(gte(records.recordPosition, newRecordPosition), lt(records.recordPosition, oldRecordPosition))
+      ),
+      shift: 1,
+    });
   } else {
-    await DrizzleProvider.getInstance()
-      .update(records)
-      .set({ recordPosition: sql<number>`recordPosition - 1` })
-      .where(
-        and(
-          and(eq(records.userId, userId), eq(records.recordDate, record.recordDate)),
-          and(gt(records.recordPosition, oldRecordPosition), lte(records.recordPosition, newRecordPosition))
-        )
-      );
+    await shiftRecordsPositionInDb({
+      filter: and(
+        and(eq(records.userId, userId), eq(records.recordDate, recordDate)),
+        and(gt(records.recordPosition, oldRecordPosition), lte(records.recordPosition, newRecordPosition))
+      ),
+      shift: -1,
+    });
   }
 
-  const [updatedRecord] = await DrizzleProvider.getInstance()
-    .update(records)
-    .set({ recordPosition: newRecordPosition })
-    .where(eq(records.recordId, recordId))
-    .returning();
-
-  return updatedRecord;
+  return updateRecordInDb({ recordId, recordUpdates: { recordPosition: newRecordPosition } });
 };
 
-export const getRecordsByDate = async ({ recordDate, userId }: GetRecordsByDateProps) => {
+export const getRecordsFromDb = async ({ userId, recordDate }: GetRecordsFromDbProps) => {
   const dateRecords = await DrizzleProvider.getInstance()
     .select()
     .from(records)
     .where(and(eq(records.userId, userId), eq(records.recordDate, recordDate)))
-    .orderBy(records.recordDate);
+    .orderBy(records.recordPosition);
 
   return dateRecords;
 };
 
-export const getRecordById = async ({ recordId, userId }: GetRecordByIdProps) => {
-  if (!recordId) {
-    throw new BadRequestError('There is no record with such id');
-  }
-
+export const getRecordFromDb = async ({ recordId }: GetRecordFromDbProps) => {
   const [record] = await DrizzleProvider.getInstance().select().from(records).where(eq(records.recordId, recordId));
-
-  if (!record) {
-    throw new BadRequestError('There is no such record');
-  }
-
-  if (record.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
 
   return record;
 };
 
-export const getRecordedDatesByUser = async ({ userId }: GetRecordedDatesByUserProps) => {
+export const getRecordedDatesFromDb = async ({ userId }: GetRecordedDatesFromDbProps) => {
   const dates = await DrizzleProvider.getInstance()
     .selectDistinct({
       date: records.recordDate,
@@ -160,10 +149,39 @@ export const getRecordedDatesByUser = async ({ userId }: GetRecordedDatesByUserP
   return dates;
 };
 
-const getRecordsLength = async ({ userId, recordDate }: GetRecordsLengthProps) => {
-  const [todoLength] = await DrizzleProvider.getInstance()
+export const countRecords = async ({ userId, recordDate }: CountRecordsProps) => {
+  const [recordsLength] = await DrizzleProvider.getInstance()
     .select({ count: sql<number>`COUNT(*)` })
     .from(records)
     .where(and(eq(records.userId, userId), eq(records.recordDate, recordDate)));
-  return todoLength.count;
+  return recordsLength.count;
+};
+
+export const shiftRecordsPositionInDb = async ({ filter, shift }: ShiftRecordsPositionInDbProps) => {
+  return DrizzleProvider.getInstance()
+    .update(records)
+    .set({ recordPosition: sql`${records.recordPosition} + ${shift}` })
+    .where(filter);
+};
+
+export const insertNewRecordInDb = async ({ userId, recordDate, recordNote, recordPosition }: InsertNewRecordInDbProps) => {
+  const [record] = await DrizzleProvider.getInstance()
+    .insert(records)
+    .values({ userId, recordNote, recordDate, recordPosition })
+    .returning();
+  return record;
+};
+
+export const updateRecordInDb = async ({ recordId, recordUpdates }: UpdateRecordInDbProps) => {
+  const [updatedRecord] = await DrizzleProvider.getInstance()
+    .update(records)
+    .set(recordUpdates)
+    .where(eq(records.recordId, recordId))
+    .returning();
+
+  return updatedRecord;
+};
+
+export const deleteRecordFromDb = async ({ recordId }: DeleteRecordFromDbProps) => {
+  return DrizzleProvider.getInstance().delete(records).where(eq(records.recordId, recordId));
 };

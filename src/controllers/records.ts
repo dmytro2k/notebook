@@ -6,144 +6,73 @@ import {
   DeleteRecordBody,
   EditRecordBody,
   GetDateRecordsBody,
-  GetFullRecordBody,
   GetRecordedDatesBody,
-} from '../types';
+  RecordParams,
+} from '../types/records';
 import { TypedRequest } from '../types';
-import { safeAwait } from '../utils/safeAwait';
 import {
   createNewRecord,
   deleteRecordById,
   updateRecord,
-  getRecordsByDate,
-  getRecordById,
-  getRecordedDatesByUser,
-  changeRecordPositionById,
+  getRecordsFromDb,
+  getRecordedDatesFromDb,
+  changeRecordPosition,
 } from '../services/records';
-import { UnauthenticatedError } from '../errors';
-import { getRecordedDatesWithTodos } from '../services/todos';
+import { getRecordedDatesWithTodosFromDb } from '../services/todos';
 
 export const createRecord = async (req: TypedRequest<CreateRecordBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { recordNote, userId, recordDate } = req.body;
+  const { userId } = req.user!;
+  const { recordNote, recordDate, recordPosition } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const record = await createNewRecord({ userId, recordDate, recordNote, recordPosition });
 
-  const [error, data] = await safeAwait(createNewRecord({ recordNote, userId, recordDate }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.CREATED).json(data);
+  res.status(StatusCodes.CREATED).json(record);
 };
 
-export const deleteRecord = async (req: TypedRequest<DeleteRecordBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, recordId } = req.body;
-  const [error, _] = await safeAwait(deleteRecordById({ userId, recordId }));
+export const deleteRecord = async (req: TypedRequest<DeleteRecordBody, RecordParams, {}>, res: Response, next: NextFunction) => {
+  const { userId } = req.user!;
+  const { recordId, recordDate, recordPosition } = req.record!;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  await deleteRecordById({ userId, recordId, recordDate, recordPosition });
 
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.NO_CONTENT).json();
+  res.status(StatusCodes.OK).json(req.record!);
 };
 
-export const editRecord = async (req: TypedRequest<EditRecordBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { recordNote, userId, recordId } = req.body;
+export const editRecord = async (req: TypedRequest<EditRecordBody, RecordParams, {}>, res: Response, next: NextFunction) => {
+  const { recordId } = req.record!;
+  const { recordNote } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const record = await updateRecord({ recordNote, recordId });
 
-  const [error, data] = await safeAwait(updateRecord({ recordNote, userId, recordId }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(record);
 };
 
-export const changeRecordPosition = async (req: TypedRequest<ChangeRecordPositionBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, recordId, recordPosition } = req.body;
+export const moveRecord = async (req: TypedRequest<ChangeRecordPositionBody, RecordParams, {}>, res: Response, next: NextFunction) => {
+  const { userId } = req.user!;
+  const { recordId, recordDate, recordPosition: oldRecordPosition } = req.record!;
+  const { recordPosition: newRecordPosition } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const record = await changeRecordPosition({ userId, recordId, recordDate, oldRecordPosition, newRecordPosition });
 
-  const [error, data] = await safeAwait(changeRecordPositionById({ userId, recordId, recordPosition }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(record);
 };
 
 export const getDateRecords = async (req: TypedRequest<GetDateRecordsBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, recordDate } = req.body;
+  const { userId } = req.user!;
+  const { recordDate } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const records = await getRecordsFromDb({ recordDate, userId });
 
-  const [error, data] = await safeAwait(getRecordsByDate({ recordDate, userId }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
-};
-
-export const getFullRecord = async (req: TypedRequest<GetFullRecordBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, recordId } = req.body;
-
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
-
-  const [error, data] = await safeAwait(getRecordById({ userId, recordId }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(records);
 };
 
 export const getRecordedDates = async (req: TypedRequest<GetRecordedDatesBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId } = req.body;
+  const { userId } = req.user!;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const recordDates = await getRecordedDatesFromDb({ userId });
+  const todoDates = await getRecordedDatesWithTodosFromDb({ userId });
 
-  const [recordError, recordData] = await safeAwait(getRecordedDatesByUser({ userId }));
-  const [todoError, todoData] = await safeAwait(getRecordedDatesWithTodos({ userId }));
+  const dates = [...new Set([...recordDates, ...todoDates])];
 
-  if (recordError) {
-    return next(recordError);
-  }
-
-  if (todoError) {
-    return next(todoError);
-  }
-
-  const data = [...new Set([...recordData, ...todoData])];
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(dates);
 };

@@ -1,38 +1,20 @@
 import { NextFunction, Response } from 'express';
-import { AuthBodySchema, TypedRequest } from '../types';
-import { userAuth, userLogin, userRegister } from '../services/auth';
+import { TypedRequest } from '../types';
+import { userLogin, userRegister } from '../services/auth';
 import { StatusCodes } from 'http-status-codes';
 import { safeAwait } from '../utils/safeAwait';
+import { AuthBody } from '../types/user';
 
-export const register = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
+export const register = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, next: NextFunction) => {
   const { userName, userPassword } = req.body;
-  const [error, data] = await safeAwait(userRegister({ userName, userPassword }));
+  const user = await userRegister({ userName, userPassword });
 
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.CREATED).json(data);
+  res.status(StatusCodes.CREATED).json(user);
 };
 
-export const login = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
+export const login = async (req: TypedRequest<AuthBody, {}, {}>, res: Response, next: NextFunction) => {
   const { userName, userPassword } = req.body;
-  const [error, data] = await safeAwait(userLogin({ userName, userPassword }));
+  const user = await userLogin({ userName, userPassword });
 
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
-};
-
-export const simplifiedAuth = async (req: TypedRequest<AuthBodySchema, {}, {}>, res: Response, next: NextFunction) => {
-  const { userName, userPassword } = req.body;
-  const [error, data] = await safeAwait(userAuth({ userName, userPassword }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(user);
 };

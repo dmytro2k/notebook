@@ -1,25 +1,25 @@
 import express from 'express';
-import { changeTodoPosition, createTodo, deleteTodo, editTodo, getDateTodos, getFullTodo } from '../controllers/todos';
+import { moveTodo, createTodo, deleteTodo, editTodo, getDateTodos } from '../controllers/todos';
 import { validateData } from '../middlewares/validation';
 import {
-  ChangeTodoPositionZodSchema,
-  CreateTodoZodSchema,
-  DeleteTodoZodSchema,
-  EditTodoZodSchema,
-  GetDateTodosZodSchema,
-  GetFullTodoZodSchema,
-} from '../types';
+  ChangeTodoPositionBodyZodSchema,
+  CreateTodoBodyZodSchema,
+  DeleteTodoBodyZodSchema,
+  EditTodoBodyZodSchema,
+  GetDateTodosBodyZodSchema,
+} from '../types/todos';
+import { handleRequest } from '../utils/request';
+import { checkTodo } from '../middlewares/validateTodos';
 
 const router = express.Router();
 
+router.route('/').post(validateData(CreateTodoBodyZodSchema), handleRequest(createTodo));
 router
-  .route('/')
-  .post(validateData(CreateTodoZodSchema), createTodo)
-  .delete(validateData(DeleteTodoZodSchema), deleteTodo)
-  .patch(validateData(EditTodoZodSchema), editTodo);
+  .route('/:todoId')
+  .delete(validateData(DeleteTodoBodyZodSchema), checkTodo, handleRequest(deleteTodo))
+  .patch(validateData(EditTodoBodyZodSchema), checkTodo, handleRequest(editTodo));
 
-router.route('/move').post(validateData(ChangeTodoPositionZodSchema), changeTodoPosition);
-router.route('/full').post(validateData(GetFullTodoZodSchema), getFullTodo);
-router.route('/date').post(validateData(GetDateTodosZodSchema), getDateTodos);
+router.route('/move/:todoId').post(validateData(ChangeTodoPositionBodyZodSchema), checkTodo, handleRequest(moveTodo));
+router.route('/date').post(validateData(GetDateTodosBodyZodSchema), handleRequest(getDateTodos));
 
 export default router;

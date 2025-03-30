@@ -22,6 +22,20 @@
       "when": 1733682015542,
       "tag": "0002_exotic_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1742221142254,
+      "tag": "0003_confused_sersi",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1742224618467,
+      "tag": "0004_dusty_turbo",
+      "breakpoints": true
     }
   ]
 }

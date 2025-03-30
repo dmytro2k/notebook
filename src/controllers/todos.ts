@@ -1,108 +1,51 @@
-import { ChangeTodoPositionBody, CreateTodoBody, DeleteTodoBody, EditTodoBody, GetDateTodosBody, GetFullTodoBody } from '../types';
+import { ChangeTodoPositionBody, CreateTodoBody, DeleteTodoBody, EditTodoBody, GetDateTodosBody, TodoParams } from '../types/todos';
 import { StatusCodes } from 'http-status-codes';
-import { UnauthenticatedError } from '../errors';
-import { safeAwait } from '../utils/safeAwait';
 import { TypedRequest } from '../types';
 import { Response, NextFunction } from 'express';
-import { changeTodoPositionById, createNewTodo, deleteTodoById, getTodoById, getTodosByDate, updateTodo } from '../services/todos';
+import { changeTodoPosition, createNewTodo, deleteTodoById, getTodosFromDb, updateTodo } from '../services/todos';
 
 export const createTodo = async (req: TypedRequest<CreateTodoBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoNote, todoDate } = req.body;
+  const { userId } = req.user!;
+  const { todoNote, todoDate, todoPosition } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const todo = await createNewTodo({ userId, todoNote, todoDate, todoPosition });
 
-  const [error, data] = await safeAwait(createNewTodo({ userId, todoNote, todoDate }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.CREATED).json(data);
+  res.status(StatusCodes.CREATED).json(todo);
 };
 
-export const deleteTodo = async (req: TypedRequest<DeleteTodoBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoId } = req.body;
-  const [error, _] = await safeAwait(deleteTodoById({ userId, todoId }));
+export const deleteTodo = async (req: TypedRequest<DeleteTodoBody, TodoParams, {}>, res: Response, next: NextFunction) => {
+  const { userId } = req.user!;
+  const { todoId, todoDate, todoPosition } = req.todo!;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  await deleteTodoById({ userId, todoId, todoDate, todoPosition });
 
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.NO_CONTENT).json();
+  res.status(StatusCodes.OK).json(req.todo!);
 };
 
-export const editTodo = async (req: TypedRequest<EditTodoBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoId, todoNote, todoIsDone } = req.body;
+export const editTodo = async (req: TypedRequest<EditTodoBody, TodoParams, {}>, res: Response, next: NextFunction) => {
+  const { todoId } = req.todo!;
+  const { todoNote, todoIsDone } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const todo = await updateTodo({ todoId, todoNote, todoIsDone });
 
-  const [error, data] = await safeAwait(updateTodo({ userId, todoId, todoNote, todoIsDone }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(todo);
 };
 
-export const changeTodoPosition = async (req: TypedRequest<ChangeTodoPositionBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoId, todoPosition } = req.body;
+export const moveTodo = async (req: TypedRequest<ChangeTodoPositionBody, TodoParams, {}>, res: Response, next: NextFunction) => {
+  const { userId } = req.user!;
+  const { todoId, todoDate, todoPosition: oldTodoPosition } = req.todo!;
+  const { todoPosition: newTodoPosition } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const todo = await changeTodoPosition({ userId, todoId, todoDate, oldTodoPosition, newTodoPosition });
 
-  const [error, data] = await safeAwait(changeTodoPositionById({ userId, todoId, todoPosition }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(todo);
 };
 
 export const getDateTodos = async (req: TypedRequest<GetDateTodosBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoDate } = req.body;
+  const { userId } = req.user!;
+  const { todoDate } = req.body;
 
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
+  const todos = await getTodosFromDb({ userId, todoDate });
 
-  const [error, data] = await safeAwait(getTodosByDate({ userId, todoDate }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
-};
-
-export const getFullTodo = async (req: TypedRequest<GetFullTodoBody, {}, {}>, res: Response, next: NextFunction) => {
-  const { user } = req;
-  const { userId, todoId } = req.body;
-
-  if (!user || user.userId !== userId) {
-    return next(new UnauthenticatedError('Unauthorized'));
-  }
-
-  const [error, data] = await safeAwait(getTodoById({ userId, todoId }));
-
-  if (error) {
-    return next(error);
-  }
-
-  res.status(StatusCodes.OK).json(data);
+  res.status(StatusCodes.OK).json(todos);
 };

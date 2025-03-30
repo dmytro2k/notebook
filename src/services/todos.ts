@@ -1,151 +1,142 @@
-import { z } from 'zod';
-import { todos, todoInsertZodSchema } from '../database/Schema';
-import {
-  CreateTodoBody as CreateNewTodoProps,
-  DeleteTodoBody as DeleteTodoByIdProps,
-  EditTodoBody as UpdateTodoProps,
-  GetDateTodosBody as GetTodosByDateProps,
-  GetFullTodoBody as GetTodoByIdProps,
-  ChangeTodoPositionBody as ChangeTodoPositionByIdProps,
-} from '../types';
+import { todos } from '../database/Schema';
+import { TodoUpdates } from '../types/todos';
 import { DrizzleProvider } from '../database/dbProvider';
-import { and, eq, sql, gt, gte, lte, lt } from 'drizzle-orm';
-import { BadRequestError, UnauthenticatedError } from '../errors';
+import { and, eq, sql, gt, gte, lte, lt, SQL } from 'drizzle-orm';
 
-const GetRecordedDatesWithTodosZodSchema = todoInsertZodSchema.pick({ userId: true });
-type GetRecordedDatesWithTodosProps = z.infer<typeof GetRecordedDatesWithTodosZodSchema>;
+type CreateNewTodoProps = {
+  userId: string;
+  todoNote: string;
+  todoDate: string;
+  todoPosition?: number;
+};
 
-const GetTodoLengthZodSchema = todoInsertZodSchema.pick({ userId: true, todoDate: true });
-type GetTodosLengthProps = z.infer<typeof GetTodoLengthZodSchema>;
+type DeleteTodoByIdProps = {
+  userId: string;
+  todoId: string;
+  todoDate: string;
+  todoPosition: number;
+};
 
-export const createNewTodo = async ({ userId, todoNote, todoDate }: CreateNewTodoProps) => {
-  const todosLength = await getTodosLength({ userId, todoDate });
-  const todoPosition = todosLength + 1;
+type UpdateTodoProps = {
+  todoId: string;
+  todoNote: string;
+  todoIsDone: boolean;
+};
+
+type ChangeTodoPositionProps = {
+  userId: string;
+  todoId: string;
+  todoDate: string;
+  oldTodoPosition: number;
+  newTodoPosition: number;
+};
+
+type GetTodosFromDbProps = {
+  userId: string;
+  todoDate: string;
+};
+
+type GetTodoFromDbProps = {
+  todoId: string;
+};
+
+type GetRecordedDatesWithTodosFromDbProps = {
+  userId: string;
+};
+
+type CountTodosProps = {
+  userId: string;
+  todoDate: string;
+};
+
+type ShiftTodosPositionInDbProps = {
+  filter: SQL | undefined;
+  shift: number;
+};
+
+type InsertNewTodoInDbProps = {
+  userId: string;
+  todoDate: string;
+  todoNote: string;
+  todoPosition: number;
+};
+
+type UpdateTodoInDbProps = {
+  todoId: string;
+  todoUpdates: TodoUpdates;
+};
+
+type DeleteTodoFromDbProps = {
+  todoId: string;
+};
+
+export const createNewTodo = async ({ userId, todoNote, todoDate, todoPosition }: CreateNewTodoProps) => {
+  const todosLength = await countTodos({ userId, todoDate });
+
+  if ((!todoPosition && todoPosition != 0) || todoPosition > todosLength) {
+    todoPosition = todosLength;
+  }
+
+  await shiftTodosPositionInDb({
+    filter: and(and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)), gte(todos.todoPosition, todoPosition)),
+    shift: 1,
+  });
 
   const [todo] = await DrizzleProvider.getInstance().insert(todos).values({ userId, todoNote, todoDate, todoPosition }).returning();
   return todo;
 };
 
-export const deleteTodoById = async ({ userId, todoId }: DeleteTodoByIdProps) => {
-  if (!todoId) {
-    throw new BadRequestError('There is no todo with such id');
-  }
-
-  const [todo] = await DrizzleProvider.getInstance().select().from(todos).where(eq(todos.todoId, todoId));
-
-  if (!todo) {
-    throw new BadRequestError('There is no such todo');
-  }
-
-  if (todo.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
-
+export const deleteTodoById = async ({ userId, todoId, todoDate, todoPosition }: DeleteTodoByIdProps) => {
   await DrizzleProvider.getInstance().delete(todos).where(eq(todos.todoId, todoId));
-  await DrizzleProvider.getInstance()
-    .update(todos)
-    .set({ todoPosition: sql<number>`todoPosition - 1` })
-    .where(and(and(eq(todos.userId, userId), eq(todos.todoDate, todo.todoDate)), gt(todos.todoPosition, todo.todoPosition)));
+  await shiftTodosPositionInDb({
+    filter: and(and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)), gt(todos.todoPosition, todoPosition)),
+    shift: -1,
+  });
 };
 
-export const updateTodo = async ({ userId, todoId, todoNote, todoIsDone }: UpdateTodoProps) => {
-  const [todo] = await DrizzleProvider.getInstance().select().from(todos).where(eq(todos.todoId, todoId));
-
-  if (!todo) {
-    throw new BadRequestError('There is no such record');
-  }
-
-  if (todo.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
-
-  const [updatedTodo] = await DrizzleProvider.getInstance()
-    .update(todos)
-    .set({ todoNote, todoIsDone })
-    .where(eq(todos.todoId, todoId))
-    .returning();
-
-  return updatedTodo;
+export const updateTodo = async ({ todoId, todoNote, todoIsDone }: UpdateTodoProps) => {
+  return updateTodoInDb({ todoId, todoUpdates: { todoNote, todoIsDone } });
 };
 
-export const changeTodoPositionById = async ({ userId, todoId, todoPosition: newTodoPosition }: ChangeTodoPositionByIdProps) => {
-  const [todo] = await DrizzleProvider.getInstance().select().from(todos).where(eq(todos.todoId, todoId));
-
-  if (!todo) {
-    throw new BadRequestError('There is no such todo');
-  }
-
-  if (todo.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
-
-  const oldTodoPosition = todo.todoPosition;
-
-  await DrizzleProvider.getInstance()
-    .update(todos)
-    .set({ todoPosition: sql<number>`-1` })
-    .where(eq(todos.todoId, todoId));
-
+export const changeTodoPosition = async ({ userId, todoId, todoDate, oldTodoPosition, newTodoPosition }: ChangeTodoPositionProps) => {
   if (oldTodoPosition < newTodoPosition) {
-    await DrizzleProvider.getInstance()
-      .update(todos)
-      .set({ todoPosition: sql<number>`todoPosition + 1` })
-      .where(
-        and(
-          and(eq(todos.userId, userId), eq(todos.todoDate, todo.todoDate)),
-          and(gte(todos.todoPosition, newTodoPosition), lt(todos.todoPosition, oldTodoPosition))
-        )
-      );
+    await shiftTodosPositionInDb({
+      filter: and(
+        and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)),
+        and(gte(todos.todoPosition, newTodoPosition), lt(todos.todoPosition, oldTodoPosition))
+      ),
+      shift: 1,
+    });
   } else {
-    await DrizzleProvider.getInstance()
-      .update(todos)
-      .set({ todoPosition: sql<number>`todoPosition - 1` })
-      .where(
-        and(
-          and(eq(todos.userId, userId), eq(todos.todoDate, todo.todoDate)),
-          and(gt(todos.todoPosition, oldTodoPosition), lte(todos.todoPosition, newTodoPosition))
-        )
-      );
+    await shiftTodosPositionInDb({
+      filter: and(
+        and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)),
+        and(gt(todos.todoPosition, oldTodoPosition), lte(todos.todoPosition, newTodoPosition))
+      ),
+      shift: -1,
+    });
   }
 
-  const [updatedTodo] = await DrizzleProvider.getInstance()
-    .update(todos)
-    .set({ todoPosition: newTodoPosition })
-    .where(eq(todos.todoId, todoId))
-    .returning();
-
-  return updatedTodo;
+  return updateTodoInDb({ todoId, todoUpdates: { todoPosition: newTodoPosition } });
 };
 
-export const getTodosByDate = async ({ userId, todoDate }: GetTodosByDateProps) => {
+export const getTodosFromDb = async ({ userId, todoDate }: GetTodosFromDbProps) => {
   const dateTodos = await DrizzleProvider.getInstance()
     .select()
     .from(todos)
     .where(and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)))
-    .orderBy(todos.todoDate);
+    .orderBy(todos.todoPosition);
 
   return dateTodos;
 };
 
-export const getTodoById = async ({ todoId, userId }: GetTodoByIdProps) => {
-  if (!todoId) {
-    throw new BadRequestError('There is no todo with such id');
-  }
-
+export const getTodoFromDb = async ({ todoId }: GetTodoFromDbProps) => {
   const [todo] = await DrizzleProvider.getInstance().select().from(todos).where(eq(todos.todoId, todoId));
-
-  if (!todo) {
-    throw new BadRequestError('There is no such record');
-  }
-
-  if (todo.userId !== userId) {
-    throw new UnauthenticatedError('Unauthorized');
-  }
 
   return todo;
 };
 
-export const getRecordedDatesWithTodos = async ({ userId }: GetRecordedDatesWithTodosProps) => {
+export const getRecordedDatesWithTodosFromDb = async ({ userId }: GetRecordedDatesWithTodosFromDbProps) => {
   const dates = await DrizzleProvider.getInstance()
     .selectDistinct({
       date: todos.todoDate,
@@ -157,10 +148,32 @@ export const getRecordedDatesWithTodos = async ({ userId }: GetRecordedDatesWith
   return dates;
 };
 
-const getTodosLength = async ({ userId, todoDate }: GetTodosLengthProps) => {
+export const countTodos = async ({ userId, todoDate }: CountTodosProps) => {
   const [todosLength] = await DrizzleProvider.getInstance()
     .select({ count: sql<number>`COUNT(*)` })
     .from(todos)
     .where(and(eq(todos.userId, userId), eq(todos.todoDate, todoDate)));
   return todosLength.count;
+};
+
+export const shiftTodosPositionInDb = async ({ filter, shift }: ShiftTodosPositionInDbProps) => {
+  return DrizzleProvider.getInstance()
+    .update(todos)
+    .set({ todoPosition: sql`${todos.todoPosition} + ${shift}` })
+    .where(filter);
+};
+
+export const insertNewTodoInDb = async ({ userId, todoDate, todoNote, todoPosition }: InsertNewTodoInDbProps) => {
+  const [todo] = await DrizzleProvider.getInstance().insert(todos).values({ userId, todoNote, todoDate, todoPosition }).returning();
+  return todo;
+};
+
+export const updateTodoInDb = async ({ todoId, todoUpdates }: UpdateTodoInDbProps) => {
+  const [updatedTodo] = await DrizzleProvider.getInstance().update(todos).set(todoUpdates).where(eq(todos.todoId, todoId)).returning();
+
+  return updatedTodo;
+};
+
+export const deleteTodoFromDb = async ({ todoId }: DeleteTodoFromDbProps) => {
+  return DrizzleProvider.getInstance().delete(todos).where(eq(todos.todoId, todoId));
 };

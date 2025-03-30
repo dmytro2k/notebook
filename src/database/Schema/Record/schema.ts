@@ -3,19 +3,15 @@ import { InferSelectModel, InferInsertModel, relations } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { users } from '../index';
 
-export const records = pgTable(
-  'records',
-  {
-    recordId: uuid('record_id').defaultRandom().primaryKey(),
-    recordNote: text('record_note').notNull(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    recordDate: date('record_date').notNull(),
-    recordPosition: integer('record_position').notNull(),
-  },
-  (table) => [unique().on(table.userId, table.recordDate, table.recordPosition)]
-);
+export const records = pgTable('records', {
+  recordId: uuid('record_id').defaultRandom().primaryKey(),
+  recordNote: text('record_note').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  recordDate: date('record_date').notNull(),
+  recordPosition: integer('record_position').notNull(),
+});
 
 export const recordsRelations = relations(records, ({ one }) => ({
   author: one(users, {

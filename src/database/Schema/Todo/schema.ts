@@ -3,20 +3,16 @@ import { InferSelectModel, InferInsertModel, relations } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { users } from '../index';
 
-export const todos = pgTable(
-  'todos',
-  {
-    todoId: uuid('todo_id').defaultRandom().primaryKey(),
-    todoNote: text('todo_note').notNull(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    todoDate: date('todo_date').notNull(),
-    todoIsDone: boolean('todo_is_done').notNull().default(false),
-    todoPosition: integer('todo_position').notNull(),
-  },
-  (table) => [unique().on(table.userId, table.todoDate, table.todoPosition)]
-);
+export const todos = pgTable('todos', {
+  todoId: uuid('todo_id').defaultRandom().primaryKey(),
+  todoNote: text('todo_note').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.userId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  todoDate: date('todo_date').notNull(),
+  todoIsDone: boolean('todo_is_done').notNull().default(false),
+  todoPosition: integer('todo_position').notNull(),
+});
 
 export const todosRelations = relations(todos, ({ one }) => ({
   author: one(users, {
